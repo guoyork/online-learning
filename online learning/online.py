@@ -99,8 +99,9 @@ class online_learning(object):
                             for y1 in range(p+1, interval):
                                 for x2 in range(p):
                                     for y2 in range(p+1, interval):
-                                        self.information_list.append(information_general_coins(p/interval, m1/interval, m2/interval, x1/interval, y1/interval, x2/interval, y2/interval))
-
+                                        temp = information_general_coins(p/interval, m1/interval, m2/interval, x1/interval, y1/interval, x2/interval, y2/interval)
+                                        if temp.legal():
+                                            self.information_list.append(temp)
         self.nums = len(self.information_list)
         self.weight = np.random.random(self.nums)
         self.weight /= np.sum(self.weight)
@@ -146,7 +147,7 @@ class online_learning(object):
         return loss
 
     def update_weight(self):
-        eta = 1
+        eta = 10
         new_weight = np.exp(eta*self.losses)
         self.weight = new_weight/np.sum(new_weight)
 
@@ -157,7 +158,7 @@ class online_learning(object):
                 print("epoch "+str(i)+": ", weighted_sum(self.weight, loss))
             self.losses += loss
             self.update_weight()
-            np.savetxt("weight.txt",self.weight)
+            np.savetxt("weight.txt", self.weight)
 
 
 if __name__ == "__main__":
