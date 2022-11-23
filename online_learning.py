@@ -10,11 +10,12 @@ class OnlineLearning(object):
         self.experts2func = [[] for i in range(len(experts))]
         for i in range(len(experts)):
             for report in experts[i].allreports:
-                repo = np.array(report["report"])
-                idx = map2inputs(repo)
-                # print(repo, idx)
-                self.func2experts[idx].append((i, report["p"], report["benchmark"]))
-                self.experts2func[i].append((idx, report["p"], report["benchmark"]))
+                if report["p"] > 0:
+                    repo = np.array(report["report"])
+                    idx = map2inputs(repo)
+                    # print(repo, idx)
+                    self.func2experts[idx].append((i, report["p"], report["benchmark"]))
+                    self.experts2func[i].append((idx, report["p"], report["benchmark"]))
 
     def calc_func(self):
         func = np.zeros((len(self.func2experts)), dtype=float)
@@ -40,24 +41,26 @@ class OnlineLearning(object):
         weight = np.exp(eta * self.losses)
         self.weight = weight / np.sum(weight)
 
-    def train(self, N=10000, eta=20):
-        minloss = 1
+    def train(self, N=10000, eta=40):
+        minloss = [1]
         for i in range(N):
             self.func = self.calc_func()
             loss = self.calc_loss()
             if i % 10 == 0:
                 print("Epoch #"+str(i)+": ", np.sum(loss * self.weight), ",", np.max(loss))
-                if np.max(loss) < minloss:
-                    minloss = np.max(loss)
-                    optfunc = self.func
+                # if np.max(loss) < np.max(minloss):
+                #     minweight = self.weight
+                #     minloss = loss
+                #     optfunc = self.func
                 # print(np.argmax(loss), ", ", self.weight[np.argmax(loss)])
             # one_hot_loss = np.array([1 if i == argm else 0 for i in range(len(loss))])
-            self.losses += loss
-
+            self.loss = loss
+            self.losses = np.maximum(self.losses + (i + N / 5) / N * (loss - np.sum(loss * self.weight)), 0)
+            
             # argm = np.argmax(loss)
             # self.losses[argm] += loss[argm]
 
             # self.losses += one_hot_loss
             self.update_weight(eta=eta)
-            
-        return optfunc
+
+        # return minloss, minweight, optfunc

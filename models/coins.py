@@ -41,4 +41,4 @@ class CoinsOrder2(Coins):
         msum = sum(list(m))
         order_1 = [(alpha + y[i]) / (alpha + beta + m[i]) for i in range(len(m))]
         order_2 = [(alpha + order_1[i] * (msum - m[i])) / (alpha + beta + (msum - m[i])) for i in range(len(m))]
-        return tuple(order_1 + order_2)
+        return tuple(order_1) + tuple(order_2)
