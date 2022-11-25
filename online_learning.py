@@ -3,6 +3,7 @@ import numpy as np
 class OnlineLearning(object):
     def __init__(self, experts, map2inputs, len_inputs):
         self.eps = 1e-10
+        self.experts = experts
         self.map2inputs = map2inputs
         self.losses = np.zeros((len(experts)), dtype=float)
         self.update_weight()
@@ -41,26 +42,21 @@ class OnlineLearning(object):
         weight = np.exp(eta * self.losses)
         self.weight = weight / np.sum(weight)
 
-    def train(self, N=10000, eta=40):
+    def train(self, N=10000, eta=40, info_epoch=100):
         minloss = [1]
-        for i in range(N):
+        for i in range(1, N + 1):
             self.func = self.calc_func()
             loss = self.calc_loss()
-            if i % 10 == 0:
+            if i % info_epoch == 0:
                 print("Epoch #"+str(i)+": ", np.sum(loss * self.weight), ",", np.max(loss))
-                # if np.max(loss) < np.max(minloss):
-                #     minweight = self.weight
-                #     minloss = loss
-                #     optfunc = self.func
-                # print(np.argmax(loss), ", ", self.weight[np.argmax(loss)])
-            # one_hot_loss = np.array([1 if i == argm else 0 for i in range(len(loss))])
             self.loss = loss
             self.losses = np.maximum(self.losses + (i + N / 5) / N * (loss - np.sum(loss * self.weight)), 0)
-            
-            # argm = np.argmax(loss)
-            # self.losses[argm] += loss[argm]
-
-            # self.losses += one_hot_loss
             self.update_weight(eta=eta)
 
-        # return minloss, minweight, optfunc
+    
+    def output_topweighted(self, k=10, output=False):
+        f = [i for i in range(len(self.weight))]
+        f.sort(key=lambda x: -self.weight[x])
+        for i in range(k):
+            print(self.experts[f[i]].args, self.weight[f[i]], self.loss[f[i]])
+            self.experts[f[i]].calc_loss(lambda x: self.func[self.map2inputs(x)], output=output)

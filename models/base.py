@@ -30,3 +30,16 @@ class Base(object):
                 break
         # print(res)
         return res
+
+    def calc_loss(self, func, output=False):
+        loss = 0
+        if output:
+            print("Calc Loss:", self.args)
+        for report in self.allreports:
+            aggregate = func(report["report"])
+            loss += report["p"] * (aggregate - report["benchmark"]) * (aggregate - report["benchmark"])
+            if output:
+                print(report, aggregate, report["p"] * (aggregate - report["benchmark"]) * (aggregate - report["benchmark"]))
+        if output:
+            print(loss)
+        return loss
