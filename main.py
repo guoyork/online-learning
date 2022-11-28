@@ -123,7 +123,7 @@ def binary_order_1():
     while True:
         cur = enu.cur
         if (cur[1] < cur[0]) and (cur[2] >= cur[0]) and (cur[3] < cur[0]) and (cur[4] >= cur[0]) and (cur[0] > 0) and (cur[0] < M):
-            experts.append(BinaryOrder2(mu=cur[0] / M, reports=[[cur[1] / M, cur[2] / M], [cur[3] / M, cur[4] / M]]))
+            experts.append(Binary(mu=cur[0] / M, reports=[[cur[1] / M, cur[2] / M], [cur[3] / M, cur[4] / M]]))
         if not enu.step():
             break
 
@@ -134,7 +134,26 @@ def binary_order_1():
     learner.train(N=200)
     minloss, minweight, func = learner.loss, learner.weight, learner.func
     learner.output_topweighted()
-    
+
+
+def binary_order_1_3agents():
+    M = 10
+    experts = []
+    enu = Enumerator(end=(M, M, M, M, M, M, M))
+    while True:
+        cur = enu.cur
+        if (cur[1] < cur[0]) and (cur[2] >= cur[0]) and (cur[3] < cur[0]) and (cur[4] >= cur[0]) and (cur[5] < cur[0]) and (cur[6] >= cur[0]) and (cur[0] > 0) and (cur[0] < M):
+            experts.append(Binary(mu=cur[0] / M, reports=[[cur[1] / M, cur[2] / M], [cur[3] / M, cur[4] / M], [cur[5] / M, cur[6] / M]]))
+        if not enu.step():
+            break
+
+    def map2inputs(repo):
+        return int(repo[0] * M + 0.5) * (M + 1) * (M + 1) + int(repo[1] * M + 0.5) * (M + 1) + int(repo[2] * M + 0.5)
+
+    learner = OnlineLearning(experts, map2inputs, (M + 1) * (M + 1) * (M + 1))
+    learner.train(N=1000, info_epoch=10, eta=10)
+    minloss, minweight, func = learner.loss, learner.weight, learner.func
+    learner.output_topweighted()
 
 def save_binary_function(M=100, N=10000):
     def map2inputs(repo):
@@ -232,11 +251,36 @@ def binary_order_2():
     learner.train(N=1000)
     minloss, minweight, func = learner.loss, learner.weight, learner.func
     learner.output_topweighted(output=True)
+
+def binary_order_2_iid():
+    M = 20
+    experts = []
+    enu = Enumerator(end=(M, M, M, M, M))
+    while True:
+        cur = enu.cur
+        if (cur[0] < cur[1]) and (cur[1] < cur[2]) and (cur[3] + cur[4] < M):
+            model = BinaryOrder2(reports=[[cur[0] / M, cur[1] / M, cur[2] / M] for i in range(2)], 
+                prob=[[cur[3] / M, cur[4] / M, (M - cur[3] - cur[4]) / M] for i in range(2)])
+            if model.args != None:
+                experts.append(model)
+        if not enu.step():
+            break
+
+    def map2inputs(repo):
+        return (int(repo[0] * M + 0.5) * (M + 1) * (M + 1) * (M + 1) + int(repo[1] * M + 0.5) * (M + 1) * (M + 1)
+            + int(repo[2] * M + 0.5) * (M + 1) + int(repo[3] * M + 0.5))
+
+    learner = OnlineLearning(experts, map2inputs, (M + 1) * (M + 1) * (M + 1) * (M + 1))
+    learner.train(N=1000, eta=10, info_epoch=10)
+    minloss, minweight, func = learner.loss, learner.weight, learner.func
+    learner.output_topweighted(output=True)
 if __name__ == "__main__":
-    save_binary_function(M=20,N=10000)
+    # save_binary_function(M=20,N=10000)
     #save_binary_function(M=200, N=20000)
+    # binary_order_1_3agents()
     # coins_order_1()
     # coins_order_2()
+    binary_order_2_iid()
     # binary_order_1()
     # binary_order_1_test(y=0.7)
     # binary_order_2()
@@ -257,7 +301,7 @@ if __name__ == "__main__":
     # expert.calc_loss(Binary.myfunc, output=True)
     # expert = Binary(mu=0.8170, reports=[[0.2654, 0.9997], [0.7346, 0.9997]])
     # expert.calc_loss(Binary.myfunc, output=True)
-    # expert = Binary(mu=0.19098300562505257589770658281718, reports=[[0, .7], [0, .3]])
+    # expert = Binary(mu=0.19098300562505257589770658281718, reports=[[0, .7], [0.1, .3]])
     # expert.calc_loss(Binary.myfunc, output=True)
     # expert = Binary(mu=0.19098300562505257589770658281718, reports=[[.1, .7], [.15, .3]])
     # expert.calc_loss(Binary.myfunc, output=True)

@@ -21,11 +21,12 @@ class Base(object):
         enu = Enumerator(end=self.get_end())
         res = []
         while True:
-            res.append({
-                "report": self.calc_report(enu.cur),
-                "p": self.calc_prob(enu.cur),
-                "benchmark": self.calc_benchmark(enu.cur),
-            })
+            if self.calc_prob(enu.cur) > 0:
+                res.append({
+                    "report": self.calc_report(enu.cur),
+                    "p": self.calc_prob(enu.cur),
+                    "benchmark": self.calc_benchmark(enu.cur),
+                })
             if not enu.step():
                 break
         # print(res)
