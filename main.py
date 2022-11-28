@@ -1,5 +1,5 @@
 from models.coins import Coins, CoinsOrder2
-from models.binary import Binary, BinaryOrder2
+from models.binary import Binary, BinaryOrder2, BinaryOrder2IID
 from online_learning import OnlineLearning
 from utils import Enumerator
 import numpy as np
@@ -252,26 +252,27 @@ def binary_order_2():
     minloss, minweight, func = learner.loss, learner.weight, learner.func
     learner.output_topweighted(output=True)
 
-def binary_order_2_iid():
-    M = 20
+def binary_order_2_iid(noise=0.0):
+    M = 10
+    N = 100
     experts = []
     enu = Enumerator(end=(M, M, M, M, M))
     while True:
         cur = enu.cur
         if (cur[0] < cur[1]) and (cur[1] < cur[2]) and (cur[3] + cur[4] < M):
-            model = BinaryOrder2(reports=[[cur[0] / M, cur[1] / M, cur[2] / M] for i in range(2)], 
+            model = BinaryOrder2IID(reports=[[cur[0] / M, cur[1] / M, cur[2] / M] for i in range(2)], 
                 prob=[[cur[3] / M, cur[4] / M, (M - cur[3] - cur[4]) / M] for i in range(2)])
             if model.args != None:
                 experts.append(model)
         if not enu.step():
             break
-
+    # print(dic)
+    # print("Rinidaba")
     def map2inputs(repo):
-        return (int(repo[0] * M + 0.5) * (M + 1) * (M + 1) * (M + 1) + int(repo[1] * M + 0.5) * (M + 1) * (M + 1)
-            + int(repo[2] * M + 0.5) * (M + 1) + int(repo[3] * M + 0.5))
+        return int(repo[0] * M + 0.5) * N + int(repo[2] * N + 0.5)
 
-    learner = OnlineLearning(experts, map2inputs, (M + 1) * (M + 1) * (M + 1) * (M + 1))
-    learner.train(N=1000, eta=10, info_epoch=10)
+    learner = OnlineLearning(experts, map2inputs, (M + 1) * (N + 1))
+    learner.train(N=1000, info_epoch=10)
     minloss, minweight, func = learner.loss, learner.weight, learner.func
     learner.output_topweighted(output=True)
 if __name__ == "__main__":

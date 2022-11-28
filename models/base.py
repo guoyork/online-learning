@@ -1,8 +1,10 @@
 from utils import Enumerator
+from copy import deepcopy
 
 class Base(object):
     def __init__(self, **args):
         self.args = args
+        self.fix_args = deepcopy(args)
         self.allreports = self.calc()
 
     def get_end(self):
@@ -16,8 +18,16 @@ class Base(object):
 
     def calc_benchmark(self):
         pass
+    
+    def add_noise(self, noise):
+        pass
 
-    def calc(self):
+    def del_noise(self):
+        self.args = deepcopy(self.fix_args)
+
+    def calc(self, noise=0.0):
+        if noise > 0:
+            self.add_noise(noise)
         enu = Enumerator(end=self.get_end())
         res = []
         while True:
@@ -29,6 +39,8 @@ class Base(object):
                 })
             if not enu.step():
                 break
+        if noise > 0:
+            self.del_noise()
         # print(res)
         return res
 

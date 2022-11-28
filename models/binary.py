@@ -1,25 +1,43 @@
 from models.base import Base
 from math import gamma, sqrt, log
+from random import uniform
+
+from utils import Enumerator
 
 class Binary(Base):
+    def calc_mu_init(self, args):
+        mu = .0
+        for i in range(len(args["reports"][0])):
+            mu += args["reports"][0][i] * args["prob"][0][i]
+        return mu
+
+    def calc_prob_init(self, args):
+        mu = args["mu"]
+        prob = []
+        for i in range(len(args["reports"])):
+            prob.append([abs(args["reports"][i][1] - mu) / abs(args["reports"][i][1] - args["reports"][i][0]),
+                abs(mu - args["reports"][i][0]) / abs(args["reports"][i][1] - args["reports"][i][0])])
+        return prob
+
     def __init__(self, **args):
         if "mu" in args:
-            mu = args["mu"]
             if "prob" not in args:
-                prob = []
-                for i in range(len(args["reports"])):
-                    prob.append([abs(args["reports"][i][1] - mu) / abs(args["reports"][i][1] - args["reports"][i][0]),
-                        abs(mu - args["reports"][i][0]) / abs(args["reports"][i][1] - args["reports"][i][0])])
-                args.update({"prob": prob})
+                args.update({"prob": self.calc_prob_init(args)})
         else:
-            mu = .0
-            for i in range(len(args["reports"][0])):
-                mu += args["reports"][0][i] * args["prob"][0][i]
-            args.update({"mu": mu})
-            if (mu == 0) or (mu == 1):
+            mu = self.calc_mu_init(args)
+            if (mu <= 0) or (mu >= 1):
                 self.args = None
                 return
+            args.update({"mu": mu})
         super().__init__(**args)
+
+    def add_noise(self, noise):
+        for i in range(len(self.args["reports"])):
+            for j in range(len(self.args["reports"][i])):
+                self.args["reports"][i][j] = max(min(self.args["reports"][i][j] + uniform(-noise, noise), 1), 0)
+        self.args["mu"] = self.calc_mu_init(self.args)
+        if self.args["mu"] == 0:
+            self.del_noise()
 
     def get_end(self):
         return tuple([len(self.args["reports"][i]) - 1 for i in range(len(self.args["reports"]))])
@@ -61,10 +79,6 @@ class BinaryOrder2(Binary):
         for i in range(n):
             r = self.args["reports"][i]
             p = self.args["prob"][i]
-            # r0 = self.args["reports"][i][0]
-            # r1 = self.args["reports"][i][1]
-            # p = self.args["prob"][i][0]
-            # p = (r1 - mu) / (r1 - r0)
             E_0.append(.0)
             E_1.append(.0)
             for j in range(len(r)):
@@ -75,3 +89,35 @@ class BinaryOrder2(Binary):
             order_2.append(order_1[i] * (sum(E_1) - E_1[i]) / (n - 1) + (1 - order_1[i]) * (sum(E_0) - E_0[i]) / (n - 1))
 
         return tuple(order_1) + tuple(order_2)
+
+class BinaryOrder2IID(BinaryOrder2):
+    def add_noise(self, noise):
+        for j in range(len(self.args["reports"][0])):
+            uniform_noise = uniform(-noise, noise)
+            for i in range(len(self.args["reports"])):
+                self.args["reports"][i][j] = max(min(self.args["reports"][i][j] + uniform_noise, 1), 0)
+        self.args["mu"] = self.calc_mu(self.args)
+
+    def calc(self, noise=0.0):
+        if noise > 0:
+            self.add_noise(noise)
+        enu = Enumerator(end=self.get_end())
+        res = []
+        while True:
+            flag = True
+            for i in range(1, len(enu.cur)):
+                if enu.cur[i] != enu.cur[i - 1]:
+                    flag = False
+                    break
+            if (self.calc_prob(enu.cur) > 0) and flag:
+                res.append({
+                    "report": self.calc_report(enu.cur),
+                    "p": self.calc_prob(enu.cur),
+                    "benchmark": self.calc_benchmark(enu.cur),
+                })
+            if not enu.step():
+                break
+        if noise > 0:
+            self.del_noise()
+        # print(res)
+        return res
