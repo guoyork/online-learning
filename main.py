@@ -253,15 +253,15 @@ def binary_order_2():
     learner.output_topweighted(output=True)
 
 def binary_order_2_iid(noise=0.0):
-    M = 10
-    N = 100
+    M = 30
+    N = 900
     experts = []
-    enu = Enumerator(end=(M, M, M, M, M))
+    enu = Enumerator(end=(M, M, M, N / M, N / M))
     while True:
         cur = enu.cur
-        if (cur[0] < cur[1]) and (cur[1] < cur[2]) and (cur[3] + cur[4] < M):
+        if (cur[0] < cur[1]) and (cur[1] < cur[2]) and (cur[3] < cur[4]):
             model = BinaryOrder2IID(reports=[[cur[0] / M, cur[1] / M, cur[2] / M] for i in range(2)], 
-                prob=[[cur[3] / M, cur[4] / M, (M - cur[3] - cur[4]) / M] for i in range(2)])
+                E_0=[cur[3] / M for i in range(2)], E_1=[cur[4] / M for i in range(2)])
             if model.args != None:
                 experts.append(model)
         if not enu.step():
@@ -269,6 +269,7 @@ def binary_order_2_iid(noise=0.0):
     # print(dic)
     # print("Rinidaba")
     def map2inputs(repo):
+        # print(repo)
         return int(repo[0] * M + 0.5) * N + int(repo[2] * N + 0.5)
 
     learner = OnlineLearning(experts, map2inputs, (M + 1) * (N + 1))
@@ -276,6 +277,9 @@ def binary_order_2_iid(noise=0.0):
     minloss, minweight, func = learner.loss, learner.weight, learner.func
     learner.output_topweighted(output=True)
 if __name__ == "__main__":
+    # model = BinaryOrder2IID(reports=[[0.2, 0.8, 1.0], [0.2, 0.8, 1.0]], pred=[[0.3, 0.5], [0.3, 0.5]])
+    # print(model.args)
+    # print(model.allreports)
     # save_binary_function(M=20,N=10000)
     #save_binary_function(M=200, N=20000)
     # binary_order_1_3agents()
