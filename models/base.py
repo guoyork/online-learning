@@ -1,10 +1,9 @@
 from utils import Enumerator
 from copy import deepcopy
 
-class Base(object):
+class BaseModel(object):
     def __init__(self, **args):
         self.args = args
-        self.fix_args = deepcopy(args)
         self.allreports = self.calc()
 
     def get_end(self):
@@ -18,12 +17,6 @@ class Base(object):
 
     def calc_benchmark(self):
         pass
-    
-    def add_noise(self, noise):
-        pass
-
-    def del_noise(self):
-        self.args = deepcopy(self.fix_args)
 
     def calc(self, noise=0.0):
         if noise > 0:

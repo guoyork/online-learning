@@ -1,7 +1,7 @@
-from models.base import Base
+from models.base import BaseModel
 from math import gamma
 
-class Coins(Base):
+class Coins(BaseModel):
     def get_end(self):
         return self.args["m"]
 

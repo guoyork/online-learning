@@ -1,23 +1,31 @@
-from models.base import Base
+from models.base import BaseModel
 from math import gamma, sqrt, log
 from random import uniform
 
 from utils import Enumerator
 
-class Binary(Base):
+class Binary(BaseModel):
     def check_valid(self, err=1e-9):
-        # print(self.args)
-        if (self.args["mu"] <= err) or (self.args["mu"] >= 1 - err):
+        try:
+            assert(self.args["mu"] >= err)
+            assert(self.args["mu"] <= 1 - err)
+            for i in range(len(self.args["reports"])):
+                assert(abs(sum(self.args["prob"][i]) - 1) <= err)
+                assert(min(self.args["reports"][i]) <= self.args["mu"])
+                assert(max(self.args["reports"][i]) >= self.args["mu"])
+                exp = 0.
+                for j in range(len(self.args["reports"][i])):
+                    if j > 0:
+                        assert(self.args["reports"][i][j] > self.args["reports"][i][j - 1])
+                    assert(self.args["reports"][i][j] >= -err)
+                    assert(self.args["reports"][i][j] <= 1 + err)
+                    assert(self.args["prob"][i][j] >= -err)
+                    assert(self.args["prob"][i][j] <= 1 + err)
+                    exp += self.args["reports"][i][j] * self.args["prob"][i][j]
+                assert(abs(exp - self.args["mu"]) <= err)
+            return True
+        except:
             return False
-        for i in range(len(self.args["reports"])):
-            if (abs(sum(self.args["prob"][i]) - 1) > err):
-                return False
-            for j in range(len(self.args["reports"][i])):
-                if (self.args["reports"][i][j] < -err) or (self.args["reports"][i][j] > 1 + err):
-                    return False
-                if (self.args["prob"][i][j] < -err) or (self.args["prob"][i][j] > 1 + err):
-                    return False
-        return True
                 
     def prob2mu(self, args):
         mu = .0
@@ -29,29 +37,25 @@ class Binary(Base):
         mu = args["mu"]
         prob = []
         for i in range(len(args["reports"])):
-            prob.append([abs(args["reports"][i][1] - mu) / abs(args["reports"][i][1] - args["reports"][i][0]),
-                abs(mu - args["reports"][i][0]) / abs(args["reports"][i][1] - args["reports"][i][0])])
+            if args["reports"][i][1] - args["reports"][i][0] > 0:
+                prob.append([abs(args["reports"][i][1] - mu) / abs(args["reports"][i][1] - args["reports"][i][0]),
+                    abs(mu - args["reports"][i][0]) / abs(args["reports"][i][1] - args["reports"][i][0])])
+            else:
+                prob.append([0, 0])
         return prob
 
     def __init__(self, **args):
-        if "mu" in args:
-            if "prob" not in args:
-                args.update({"prob": self.mu2prob(args)})
-        else:
-            mu = self.prob2mu(args)
-            if (mu <= 0) or (mu >= 1):
-                self.args = None
-                return
-            args.update({"mu": mu})
-        super().__init__(**args)
-
-    def add_noise(self, noise):
-        for i in range(len(self.args["reports"])):
-            for j in range(len(self.args["reports"][i])):
-                self.args["reports"][i][j] = max(min(self.args["reports"][i][j] + uniform(-noise, noise), 1), 0)
-        self.args["mu"] = self.prob2mu(self.args)
-        if self.args["mu"] == 0:
-            self.del_noise()
+        try:
+            if "mu" in args:
+                if "prob" not in args:
+                    args.update({"prob": self.mu2prob(args)})
+            else:
+                mu = self.prob2mu(args)
+                args.update({"mu": mu})
+            super().__init__(**args)
+            assert(self.check_valid())
+        except:
+            self.args = None
 
     def get_end(self):
         return tuple([len(self.args["reports"][i]) - 1 for i in range(len(self.args["reports"]))])
@@ -81,6 +85,22 @@ class Binary(Base):
             return 0
         return b0 / (b0 + b1)
 
+    def calc_signal(self):
+        res = []
+        mu = self.args["mu"]
+        for i in range(len(self.args["reports"])):
+            r0 = self.args["reports"][i][0]
+            r1 = self.args["reports"][i][1]
+            p0 = (mu * (1 - r0) * (1 - r1) / (1 - mu) - (1 - r0) * r1) / (r0 - r1)
+            p1 = p0 * (1 - mu) * r0 / (mu * (1 - r0))
+            res.append([int(p0 * 1e5 + 0.5) / 1e5, int(p1 * 1e5 + 0.5) / 1e5])
+            # assert(abs(p1 * mu / (p1 * mu + p0 * (1 - mu)) - r0) < 1e-9)
+            # assert(abs((1 - p1) * mu / ((1 - p1) * mu + (1 - p0) * (1 - mu)) - r1) < 1e-9)
+            # print(p1 * mu / (p1 * mu + p0 * (1 - mu)), r0)
+            # print((1 - p1) * mu / ((1 - p1) * mu + (1 - p0) * (1 - mu)), r1)
+            # print((1 - p1), (1 - p0) * (1 - mu) / (mu * (1 - r1)))
+        # print(self.args, res)
+        return res
     
 
 class BinaryOrder2(Binary):
@@ -135,26 +155,25 @@ class BinaryOrder2(Binary):
             # e0 = mu (1 - e1 + e0)
 
     def __init__(self, **args):
-        if "pred" in args:
-            E_0, E_1 = self.pred2E(args)
-            args.update({
-                "E_0": E_0,
-                "E_1": E_1,
-            })
-        if "E_0" in args:
-            mu, prob = self.E2muprob(args)
-            if (mu <= 0) or (mu >= 1):
-                self.args = None
-                return
-            args.pop("E_0")
-            args.pop("E_1")
-            args.update({"mu": mu})
-            args.update({"prob": prob})
-        super().__init__(**args)
-        if not self.check_valid():
-            # print(self.args)
+        try:
+            if "pred" in args:
+                E_0, E_1 = self.pred2E(args)
+                args.update({
+                    "E_0": E_0,
+                    "E_1": E_1,
+                })
+            if "E_0" in args:
+                mu, prob = self.E2muprob(args)
+                if (mu <= 0) or (mu >= 1):
+                    self.args = None
+                    return
+                args.pop("E_0")
+                args.pop("E_1")
+                args.update({"mu": mu})
+                args.update({"prob": prob})
+            super().__init__(**args)
+        except:
             self.args = None
-            return
         
     def calc_report(self, x):
         n = len(self.args["reports"])

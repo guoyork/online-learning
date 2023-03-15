@@ -1,3 +1,4 @@
+import numpy as np
 
 class Enumerator(object):
     def __init__(self, start=None, end=(0, 0)):
@@ -15,3 +16,10 @@ class Enumerator(object):
             return False
         self.cur = self.cur[:x] + (self.cur[x] + 1,) + tuple([0 for i in range(len(self.end) - x - 1)])
         return True
+
+def get_average(data):
+    res = np.zeros(len(data[0]))
+    for i in range(len(data)):
+        res += np.array(data[i])
+    res /= len(data)
+    return res
